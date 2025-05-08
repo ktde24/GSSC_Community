@@ -1,0 +1,5 @@
+.GSSCCommunity/
+.env
+__pycache__/
+*.pyc
+

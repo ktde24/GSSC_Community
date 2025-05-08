@@ -1,0 +1,3 @@
+title,description,amount,percent,approved,coin_investments,chat
+바디로션 제조,민감한 피부도 사용 가능한 바디로션 제작 판매,1000,30.0,True,"[{'name': 'Ho', 'coin': 30}, {'name': 'Kim', 'coin': 500}]","[{'role': 'user', 'content': 'hi', 'timestamp': '2025-04-15 14:42'}]"
+탈모 샴푸,탈모 예방 샴푸 제조,500,50.0,True,"[{'name': 'Kim', 'coin': 400}]",[]
