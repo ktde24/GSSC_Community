@@ -14,4 +14,5 @@ def get_chat_response(messages, model="gpt-4o-mini", temperature=0.3):
         messages=messages,
         temperature=temperature
     )
-    return response.choices[0].message.content
+    print("RESPONSE >>>", response)  # or logging.info(response)
+    return response.choices[0].message.content.strip()

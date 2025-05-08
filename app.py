@@ -2,15 +2,36 @@ import streamlit as st
 st.set_page_config(page_title="Mentor Service Platform", layout="wide")
 
 import pandas as pd
+import sounddevice as sd
 import os
 from datetime import datetime
 
 from task_recommendation import task_recommendation_ui
+from sound import RealTimeTranslator
+from threading import Thread
+import time
+import sys
+from queue import Queue
+from streamlit_autorefresh import st_autorefresh
+
+
+if sys.version_info >= (3, 10):
+    import collections.abc
+    import collections
+    collections.MutableMapping = collections.abc.MutableMapping
+    collections.Sequence = collections.abc.Sequence
+    collections.Mapping = collections.abc.Mapping
+
+import asyncio
+try:
+    asyncio.get_running_loop()
+except RuntimeError:
+    asyncio.set_event_loop(asyncio.new_event_loop())
 
 # ---------- 파일 경로 ----------
-MENTOR_CHAT_CSV = "mentor_chats.csv"
-ITEM_COMMUNITY_CSV = "item_community.csv"
-MENTOR_REVIEW_CSV = "mentor_reviews.csv"
+MENTOR_CHAT_CSV = "data/mentor_chats.csv"
+ITEM_COMMUNITY_CSV = "data/item_community.csv"
+MENTOR_REVIEW_CSV = "data/mentor_reviews.csv"
 
 # ---------- 멘토 더미 데이터 ----------
 MENTORS = [
@@ -113,10 +134,10 @@ body, div, textarea, input, button {
 
 # ---------- 멘토 프로필 및 리뷰 ----------
 def mentor_profile_ui():
-    st.title("🧑‍🏫 Advisor Profile")
-    selected_mentor = st.selectbox("Select a Advisor to rate:", MENTORS, format_func=lambda x: x["name"])
+    st.title("🧑‍🏫 Mentor Profile")
+    selected_mentor = st.selectbox("Select a Mentor to rate:", MENTORS, format_func=lambda x: x["name"])
 
-    # 프로필 사진 + 정보 한 줄에 촘촘하게
+    # 프로필 사진 + 정보 한 줄에
     st.markdown(f"""
     <div style='
         display: flex;
@@ -174,6 +195,20 @@ def mentor_profile_ui():
 
 # ---------- 멘토-멘티 채팅방 ----------
 def mentor_chat_ui():
+    
+    # 세션 상태 초기화
+    if "translation_running" not in st.session_state:
+        st.session_state.translation_running = False
+    if "translation_placeholder" not in st.session_state:
+        st.session_state.translation_placeholder = st.empty()
+    if "translator" not in st.session_state:
+        st.session_state.translator = RealTimeTranslator()
+    if "last_translation" not in st.session_state:
+        st.session_state['last_translation'] = "번역 결과가 여기에 표시됩니다."
+
+    #st_autorefresh(interval=2000, key="translationrefresh")
+
+    # Google Meet 섹션 UI
     st.markdown("""
     <div style='background-color:#e6f2ff; padding:22px 30px; border-radius:18px; margin-bottom:28px;'>
         <h2 style='margin:0 0 8px 0;'>👥 Mentor-Mentee Chatroom</h2>
@@ -185,7 +220,26 @@ def mentor_chat_ui():
     </div>
     """, unsafe_allow_html=True)
 
-    # 세션에 채팅 히스토리 관리
+    # 번역 버튼
+    col1, col2, _ = st.columns([1,1,6])
+    with col1:
+        if st.button("🎤 번역 시작", key="start_translation", use_container_width=True):
+            start_translation()
+    with col2:
+        if st.button("⏹️ 번역 중지", key="stop_translation", use_container_width=True):
+            stop_translation()
+
+    # 번역 자막 영역
+    translation_container = st.container()
+    with translation_container:
+        st.markdown(
+            f"""<div style='background:#f0f2f6; padding:12px 16px; border-radius:8px; margin:10px 0;'>
+            {st.session_state.get('last_translation','번역 결과가 여기에 표시됩니다.')}
+            </div>""",
+            unsafe_allow_html=True
+        )
+
+    # 채팅 UI
     if "mentor_chat_history" not in st.session_state:
         chats = safe_load_csv(MENTOR_CHAT_CSV)
         chat_log = []
@@ -196,22 +250,32 @@ def mentor_chat_ui():
                 chat_log = []
         st.session_state.mentor_chat_history = chat_log
 
-    st.markdown("#### 💬 Chat")
+    st.markdown("""
+    <hr style='border: 0; border-top: 2px solid #e0e0e0; margin: 24px 0 12px 0;'>
+    <h4 style='margin-bottom: 12px; color:#2a2a2a;'>💬 Conversation History</h4>
+    """, unsafe_allow_html=True)
     for msg in st.session_state.mentor_chat_history:
         is_user = (msg.get("role", "user") == "user")
-        bubble_class = "chat-bubble user" if is_user else "chat-bubble mentor"
+        align = 'flex-end' if is_user else 'flex-start'
+        bubble_class = "user" if is_user else "mentor"
         st.markdown(f"""
-        <div style='width:100%; display:flex; justify-content:{'flex-end' if is_user else 'flex-start'};'>
-            <div class='{bubble_class}'>
+        <div style='width:100%; display:flex; justify-content:{align};'>
+            <div class='chat-bubble {bubble_class}'>
                 {msg['content']}
-                <div class='chat-timestamp'>{msg['timestamp']}</div>
+                <div style="font-size: 0.8rem; color: #666; margin-top: 4px;">
+                    {msg.get('timestamp', '')}
+                </div>
             </div>
         </div>
         """, unsafe_allow_html=True)
 
+    # 입력 폼
     with st.form("mentor_chat_form", clear_on_submit=True):
-        prompt = st.text_input("Type your message...", key="mentor_chat_input")
-        submitted = st.form_submit_button("Send")
+        input_col, btn_col = st.columns([5, 1])
+        with input_col:
+            prompt = st.text_input("Type your message...", label_visibility="collapsed", placeholder="Write a message...")
+        with btn_col:
+            submitted = st.form_submit_button("Send", use_container_width=True)
         if submitted and prompt:
             now = datetime.now().strftime("%Y-%m-%d %H:%M")
             st.session_state.mentor_chat_history.append({
@@ -219,11 +283,60 @@ def mentor_chat_ui():
                 "content": prompt,
                 "timestamp": now
             })
-            pd.DataFrame([{
-                "messages": str(st.session_state.mentor_chat_history)
-            }]).to_csv(MENTOR_CHAT_CSV, index=False)
+            pd.DataFrame([{"messages": str(st.session_state.mentor_chat_history)}]).to_csv(MENTOR_CHAT_CSV, index=False)
             st.rerun()
 
+def start_translation():
+    if not st.session_state.translation_running:
+        st.session_state.translation_running = True
+        st.session_state.translator.running = True
+        try:
+            device_idx = st.session_state.translator.find_virtual_device()
+            st.session_state.translator.stream = sd.InputStream(
+                samplerate=16000,
+                channels=1,
+                dtype='float32',
+                callback=st.session_state.translator.audio_callback,
+                device=device_idx
+            )
+            st.session_state.translator.stream.start()
+
+            def thread_func(translator):
+                is_running = True
+                while is_running:
+                    try:
+                        is_running = translator.running
+                        translated = translator.process_audio()
+                        if translated:
+                            st.session_state['last_translation'] = translated
+                        time.sleep(0.1)
+                    except Exception as e:
+                        print(f"Thread error: {e}")
+                        time.sleep(0.1)
+
+            Thread(
+                target=thread_func,
+                args=(st.session_state.translator,),
+                daemon=True
+            ).start()
+
+        except Exception as e:
+            st.error(f"번역 시작 오류: {e}")
+            st.session_state.translation_running = False
+            st.session_state.translator.running = False
+
+def stop_translation():
+    st.session_state.translation_running = False
+    st.session_state.translator.running = False
+    st.session_state['last_translation'] = "번역이 중지되었습니다."
+    if hasattr(st.session_state.translator, 'stream') and st.session_state.translator.stream:
+        try:
+            st.session_state.translator.stream.stop()
+            st.session_state.translator.stream.close()
+        except:
+            pass
+    st.session_state.translation_placeholder.empty()
+    
 # ---------- 아이템 커뮤니티 ----------
 def item_community_ui():
     st.markdown("""
@@ -339,7 +452,7 @@ def pricing_ui():
 
 
 # ---------- 메인 화면 ----------
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["🧑‍🏫 Advisor Profile", "💬 Chatroom", "📄 Community", "💵 Pricing", "🎯 Role Recommendation"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["🧑‍🏫 Mentor Profile", "💬 Chatroom", "📄 Community", "💵 Pricing", "🎯 Role Recommendation"])
 
 with tab1:
     mentor_profile_ui()

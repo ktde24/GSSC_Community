@@ -44,10 +44,10 @@ def task_recommendation_ui():
     
     # 입력 필드 
     team_traits = st.text_area("Enter team member traits (use the example format)", 
-                             placeholder="예:\n혜주: 직감형, 창의성 있음, 활동성 중간")
+                             placeholder="ex:\nAmy: Intuitive, creative")
     
     task_list = st.text_area("Enter the list of tasks (one per line)", 
-                           placeholder="예:\n시장 조사 분석\n프로토타입 개발")
+                           placeholder="ex:\nMarket research analysis\nPrototype development")
 
     if st.button("Assign Tasks"):
         if not team_traits.strip() or not task_list.strip():
