@@ -15,6 +15,7 @@ from queue import Queue
 from streamlit_autorefresh import st_autorefresh
 
 
+
 if sys.version_info >= (3, 10):
     import collections.abc
     import collections
@@ -426,33 +427,8 @@ def item_community_ui():
                     st.success("Comment submitted!")
                     st.rerun()
 
-# ---------- 가격 탭 -----------
-def pricing_ui():
-    st.title("💵 Service Pricing")
-    pricing = [
-        {"time": "30 minutes (Google Meet)", "price": "$3"},
-        {"time": "60 minutes (Google Meet)", "price": "$5"},
-        {"time": "90 minutes (Google Meet)", "price": "$7"},
-    ]
-
-    for item in pricing:
-        st.markdown(f"""
-        <div style='
-            background: #fff;
-            border: 1.5px solid #e5eafe;
-            border-radius: 13px;
-            padding: 18px 24px;
-            margin-bottom: 18px;
-            box-shadow: 0 2px 8px rgba(79,139,249,0.08);
-        '>
-            <div style='font-size:1.2em; font-weight:bold; color:#333;'>{item['time']}</div>
-            <div style='font-size:1.5em; font-weight:bold; color:#4f8bf9; margin-top:8px;'>{item['price']}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-
 # ---------- 메인 화면 ----------
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["🧑‍🏫 Mentor Profile", "💬 Chatroom", "📄 Community", "💵 Pricing", "🎯 Role Recommendation"])
+tab1, tab2, tab3, tab4= st.tabs(["🧑‍🏫 Mentor Profile", "💬 Chatroom", "📄 Community", "🎯 Role Recommendation"])
 
 with tab1:
     mentor_profile_ui()
@@ -461,6 +437,4 @@ with tab2:
 with tab3:
     item_community_ui()
 with tab4:
-    pricing_ui()
-with tab5:
     task_recommendation_ui()
