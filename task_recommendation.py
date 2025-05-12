@@ -8,21 +8,27 @@ logging.basicConfig(level=logging.INFO)
 def build_task_prompt(task_list, team_traits):
     tasks_str = "\n".join(f"{i+1}. {task.strip()}" for i, task in enumerate(task_list))
     return f"""
-당신은 팀원 성향을 고려해 업무를 적절히 배분하는 AI입니다.
+You are an AI assistant tasked with assigning responsibilities based on each team member’s traits.
 
-[팀원 성향]
+[Team Member Traits]
 {team_traits}
 
-[해야 할 일 목록]
+[Task List]
 {tasks_str}
 
-- 각 업무에 대해 적합한 팀원 1명을 배정하고, 그 이유도 간단히 설명하세요.
-- 설명에 포함되는 역량은 해당 인물의 실제 성향과 일치해야 합니다.
-- 표현은 구체적으로 작성하세요. (예: '중간', '높음' 등 성향 수준 반영)
-- 아래와 같은 마크다운 표 형식으로만 답변하세요.
-| 업무 | 배정 팀원 | 배정 이유 |
-|------|-----------|-----------|
-| 예시 업무 | 예시 팀원 | 예시 이유를 여기에 작성 |
+- Give the entire task assignment result in english.
+- Do not use gendered pronouns such as "he" or "she." Use the person's name instead in the justification.
+- Assign exactly one team member to each task, along with a brief justification.
+- Your justification must reflect the individual’s actual traits.
+- Do not assign tasks based on traits the person does not have (e.g., do not cite creativity for someone who is not described as creative).
+- Use proper language to describe trait levels (e.g., “moderate,” “high,” etc.).
+- If the number of tasks is fewer than the number of team members, create additional tasks as needed. 
+  If there are more tasks than members, merge simple or similar tasks so that each task is assigned to one person.
+
+- Respond using only the markdown table format shown below.
+| Task | Assigned Member | Reason for Assignment |
+|------|------------------|------------------------|
+| Sample Task | Sample Member | Write the reason for assignment here |
 """
 
 def parse_markdown_table(md_table):
@@ -64,7 +70,7 @@ def task_recommendation_ui():
             st.success("✅ Task assignment completed!")
             st.markdown("""
             <div style="margin-bottom:1em; font-size:1.1rem;">
-                👋 아래 표는 팀원별로 가장 적합한 업무를 배정한 결과입니다.
+                👋 The table below shows the result of assigning the most suitable tasks to each team member.
             </div>
             """, unsafe_allow_html=True)
             
@@ -72,9 +78,10 @@ def task_recommendation_ui():
             if df is not None:
                 st.dataframe(df, hide_index=True, use_container_width=True)
                 # 팀원별 요약 메시지는 expander로 감추기
-                with st.expander("자세히 보기"):
+                with st.expander("Detail"):
                     for idx, row in df.iterrows():
-                        st.info(f"**{row['배정 팀원']}**님은 **'{row['업무']}'** 업무를 맡게 되었어요!\n\n> {row['배정 이유']}")
+                        st.info(f"**{row['Assigned Member']}** has been assigned the task '**{row['Task']}**'.\n\n> {row['Reason for Assignment']}")
+
             else:
                 st.markdown(response)
                         

@@ -36,9 +36,60 @@ MENTOR_REVIEW_CSV = "data/mentor_reviews.csv"
 
 # ---------- 멘토 더미 데이터 ----------
 MENTORS = [
-    {"id": "mentor_001", "name": "Alice Kim", "expertise": "Business Strategy", "style": "Analytical"},
-    {"id": "mentor_002", "name": "David Lee", "expertise": "Legal Support", "style": "Direct"},
-    {"id": "mentor_003", "name": "Sophie Park", "expertise": "Marketing & Branding", "style": "Empathetic"}
+    {
+        "id": "mentor_001",
+        "name": "Alice Kim",
+        "expertise": "Business Strategy",
+        "style": "Analytical",
+        "strengths": ["Strategic Planning", "Growth Mindset", "Balanced Perspective"],
+        "leadership": "Collaborative",
+        "bio": "Former CEO with 20+ years in scaling online businesses. Passionate about sustainable growth and mentoring future leaders."
+    },
+    {
+        "id": "mentor_002",
+        "name": "David Lee",
+        "expertise": "Legal Support",
+        "style": "Direct",
+        "strengths": ["Risk Management", "Protective Guidance", "Honest Feedback"],
+        "leadership": "Formal",
+        "bio": "Legal advisor specializing in fintech and startup law. Known for clear communication and decisive support."
+    },
+    {
+        "id": "mentor_003",
+        "name": "Sophie Park",
+        "expertise": "Marketing & Branding",
+        "style": "Empathetic",
+        "strengths": ["Active Listening", "Creative Problem Solving", "Nurturing"],
+        "leadership": "Psychosocial",
+        "bio": "Brand strategist with global agency experience. Focuses on personal branding and inclusive leadership."
+    },
+    {
+        "id": "mentor_004",
+        "name": "Paul Zahra",
+        "expertise": "Retail & Digital Transformation",
+        "style": "Collaborative",
+        "strengths": ["Personal Branding", "Growth Mindset", "Inclusive Leadership"],
+        "leadership": "Career-focused",
+        "bio": "Ex-CEO of major retail brands. Expert in digital transformation and building resilient organizations."
+    },
+    {
+        "id": "mentor_005",
+        "name": "Tony Nash",
+        "expertise": "E-commerce & Innovation",
+        "style": "Career-focused",
+        "strengths": ["Innovation", "Customer Engagement", "Sustainable Growth"],
+        "leadership": "Reverse",
+        "bio": "Founder of a leading online bookstore. Renowned for innovative strategies and peer learning."
+    },
+    {
+        "id": "mentor_006",
+        "name": "Christine Zeitz",
+        "expertise": "Leadership & Diversity",
+        "style": "Nurturing",
+        "strengths": ["Supportive", "Open Communication", "Diversity Advocacy"],
+        "leadership": "Psychosocial",
+        "bio": "Global executive championing inclusive leadership and organizational diversity."
+    }
 ]
 
 # ---------- CSV 로딩 ----------
@@ -133,6 +184,55 @@ body, div, textarea, input, button {
 </style>
 """, unsafe_allow_html=True)
 
+# ---------- 멘토-팀 매칭 시각화 ----------
+def mentor_team_matching_visualization():
+    st.title("🔗 Mentor-Team Matching")
+    st.markdown("""
+    <div style='font-size:1.1em; color:#444; margin-bottom:18px;'>
+        Enter your team's characteristics and see which mentors best match your needs!
+    </div>
+    """, unsafe_allow_html=True)
+
+    # 예시 멘토 풀 (기존 MENTORS 사용)
+    mentor_pool = MENTORS
+
+    # 사용자 입력 폼
+    with st.form("team_input_form", clear_on_submit=True):
+        team_name = st.text_input("Team Name", value="", placeholder="e.g. Team Alpha")
+        team_topic = st.text_input("Project Topic", value="", placeholder="e.g. AI Service, Branding, Legal Advice")
+        team_tags = st.text_input("Team Keywords (comma separated)", value="", placeholder="e.g. AI, 창업, Python")
+        desired_mentor_style = st.selectbox("Desired Mentor Style", ["Any", "Analytical", "Direct", "Empathetic"])
+        submitted = st.form_submit_button("Show Top 3 Mentors")
+    
+    if submitted:
+        # 입력값 정리
+        input_tags = [t.strip().lower() for t in team_tags.split(",") if t.strip()]
+        style = desired_mentor_style if desired_mentor_style != "Any" else None
+
+        # 간단한 매칭 점수: 태그 겹침 개수 + 스타일 일치(가산)
+        scored = []
+        for m in mentor_pool:
+            mentor_tags = [tag.lower() for tag in m.get("tags",[])]
+            tag_score = len(set(mentor_tags) & set(input_tags))
+            style_score = 1 if (style and m.get("style") == style) else 0
+            total_score = tag_score + style_score
+            scored.append({**m, "score": total_score, "tag_score": tag_score, "style_score": style_score})
+        top3 = sorted(scored, key=lambda x: -x["score"])[:3]
+
+        st.markdown(f"### 🏅 Top 3 Mentor Matches for **{team_name or 'Your Team'}**")
+        for idx, mentor in enumerate(top3, 1):
+            st.markdown(f"""
+            <div style='margin:15px 0; padding:16px 22px; background:#f7fafd; border-radius:13px; border:1.5px solid #e5eafe;'>
+                <b>{idx}. {mentor['name']}</b> <span style='color:#888;'>({mentor['expertise']})</span><br>
+                <b>Style:</b> {mentor.get('style','-')}<br>
+                <b>Score:</b> {mentor['score']} 
+                <span style='color:#aaa;'>(Tag: {mentor['tag_score']}, Style: {mentor['style_score']})</span><br>
+                <b>Tags:</b> {', '.join(mentor.get('tags',[]))}
+            </div>
+            """, unsafe_allow_html=True)
+        if not top3 or all(m["score"] == 0 for m in top3):
+            st.info("No suitable mentors found. Try adjusting your keywords or style.")
+
 # ---------- 멘토 프로필 및 리뷰 ----------
 def mentor_profile_ui():
     st.title("🧑‍🏫 Mentor Profile")
@@ -224,10 +324,10 @@ def mentor_chat_ui():
     # 번역 버튼
     col1, col2, _ = st.columns([1,1,6])
     with col1:
-        if st.button("🎤 번역 시작", key="start_translation", use_container_width=True):
+        if st.button("🎤 Start translation", key="start_translation", use_container_width=True):
             start_translation()
     with col2:
-        if st.button("⏹️ 번역 중지", key="stop_translation", use_container_width=True):
+        if st.button("⏹️ Stop", key="stop_translation", use_container_width=True):
             stop_translation()
 
     # 번역 자막 영역
@@ -428,13 +528,133 @@ def item_community_ui():
                     st.rerun()
 
 # ---------- 메인 화면 ----------
-tab1, tab2, tab3, tab4= st.tabs(["🧑‍🏫 Mentor Profile", "💬 Chatroom", "📄 Community", "🎯 Role Recommendation"])
+tab1, tab2, tab3, tab4, tab5, tab6  = st.tabs([ "🔗 Mentor-Team Matching", "🧑‍🏫 Mentor Profile", "💬 Chatroom", "📄 Community", "🎯 Role Recommendation", "📝 Meeting Summary"])
 
-with tab1:
-    mentor_profile_ui()
+with tab1: 
+    mentor_team_matching_visualization()
 with tab2:
-    mentor_chat_ui()
+    mentor_profile_ui()
 with tab3:
-    item_community_ui()
+    mentor_chat_ui()
 with tab4:
+    item_community_ui()
+with tab5:
     task_recommendation_ui()
+with tab6:
+    st.markdown(
+        """
+        <style>
+        .ms-title {
+            font-size: 2.3rem;
+            font-weight: 800;
+            margin-bottom: 0.7em;
+            letter-spacing: -1px;
+        }
+        .ms-section {
+            margin-bottom: 1.6em;
+        }
+        .ms-section h3 {
+            display: flex;
+            align-items: center;
+            gap: 0.5em;
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.2em;
+        }
+        .ms-box {
+            background: #fafbfc;
+            border-radius: 10px;
+            padding: 1.1em 1.5em 1.1em 1.5em;
+            margin-bottom: 0.8em;
+        }
+        .ms-task-list ol {
+            margin-left: 1.1em;
+        }
+        .ms-task-list li {
+            margin-bottom: 0.3em;
+        }
+        .ms-bullet-list {
+            margin-left: 1.1em;
+        }
+        .ms-bullet-list li {
+            margin-bottom: 0.25em;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.markdown('<div class="ms-title">📝 Meeting Summary</div>', unsafe_allow_html=True)
+
+    # 상단 정보
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown(
+            """
+            <div class="ms-section">
+                <h3>📅 Next Meeting</h3>
+                <div class="ms-box">
+                    <b>Date & Time:</b> Next Tuesday at 10 AM
+                </div>
+            </div>
+            """, unsafe_allow_html=True
+        )
+    with col2:
+        st.markdown(
+            """
+            <div class="ms-section">
+                <h3>📌 Topic</h3>
+                <div class="ms-box">
+                    API Risk Insurance Model Design
+                </div>
+            </div>
+            """, unsafe_allow_html=True
+        )
+
+    # Task List
+    st.markdown(
+        """
+        <div class="ms-section">
+            <h3>✅ Task List</h3>
+            <div class="ms-box ms-task-list">
+                <ol>
+                    <li>Finalize data collection and establish guidelines for API classification.</li>
+                    <li>Refine the insurance premium pricing model based on traffic segments.</li>
+                    <li>Develop risk scenarios based on recent fintech issues.</li>
+                </ol>
+            </div>
+        </div>
+        """, unsafe_allow_html=True
+    )
+
+    # 의견/피드백 2컬럼
+    col3, col4 = st.columns(2)
+    with col3:
+        st.markdown(
+            """
+            <div class="ms-section">
+                <h3>💡 Team Members' Opinions</h3>
+                <div class="ms-box">
+                    <ul class="ms-bullet-list">
+                        <li>Data collection is mostly complete, but there are issues with SLA violations and missing data in smaller APIs.</li>
+                        <li>The classification of APIs into <b>'major'</b> and <b>'minor'</b> based on call volume and failure rates is a good approach, though more statistical validation is needed.</li>
+                        <li>The insurance premium model needs adjustments, particularly for real-time APIs where prediction errors are larger.</li>
+                        <li>Risk scenarios are being developed, but there is a need to incorporate more recent fintech-related issues.</li>
+                    </ul>
+                </div>
+            </div>
+            """, unsafe_allow_html=True
+        )
+    with col4:
+        st.markdown(
+            """
+            <div class="ms-section">
+                <h3>🧑‍🏫 Mentor Feedback</h3>
+                <div class="ms-box">
+                    <ul class="ms-bullet-list">
+                        <li>Previous scenarios were deemed too general; the team is encouraged to include specific recent incidents, such as authentication API failures leading to payment errors.</li>
+                    </ul>
+                </div>
+            </div>
+            """, unsafe_allow_html=True
+        )
