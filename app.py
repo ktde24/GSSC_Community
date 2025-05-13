@@ -13,8 +13,13 @@ import time
 import sys
 from queue import Queue
 from streamlit_autorefresh import st_autorefresh
+import webbrowser
 
-
+# HTML 파일 열기
+if "html_opened" not in st.session_state:
+    file_path = os.path.abspath("translated_output.html")
+    webbrowser.open(f"file://{file_path}")
+    st.session_state.html_opened = True
 
 if sys.version_info >= (3, 10):
     import collections.abc
@@ -52,7 +57,8 @@ MENTORS = [
         "style": "Direct",
         "strengths": ["Risk Management", "Protective Guidance", "Honest Feedback"],
         "leadership": "Formal",
-        "bio": "Legal advisor specializing in fintech and startup law. Known for clear communication and decisive support."
+        "bio": "Legal advisor specializing in fintech and startup law. Known for clear communication and decisive support.",
+        "tags": ["legal", "compliance", "contract", "startup", "fintech", "law", "chatbot"]
     },
     {
         "id": "mentor_003",
@@ -79,17 +85,19 @@ MENTORS = [
         "style": "Career-focused",
         "strengths": ["Innovation", "Customer Engagement", "Sustainable Growth"],
         "leadership": "Reverse",
-        "bio": "Founder of a leading online bookstore. Renowned for innovative strategies and peer learning."
+        "bio": "Founder of a leading online bookstore. Renowned for innovative strategies and peer learning.",
+        "tags": ["ai", "chatbot", "nlp", "customer", "startup"]
     },
     {
-        "id": "mentor_006",
-        "name": "Christine Zeitz",
-        "expertise": "Leadership & Diversity",
-        "style": "Nurturing",
-        "strengths": ["Supportive", "Open Communication", "Diversity Advocacy"],
+        "id": "mentor_003",
+        "name": "Sophie Park",
+        "expertise": "Marketing & Branding",
+        "style": "Empathetic",
+        "strengths": ["Active Listening", "Creative Problem Solving", "Nurturing"],
         "leadership": "Psychosocial",
-        "bio": "Global executive championing inclusive leadership and organizational diversity."
-    }
+        "bio": "Brand strategist with global agency experience. Focuses on personal branding and inclusive leadership.",
+        "tags": ["branding", "communication", "nlp", "ui", "startup"]
+        }
 ]
 
 # ---------- CSV 로딩 ----------

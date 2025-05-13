@@ -5,6 +5,32 @@ from threading import Thread
 from faster_whisper import WhisperModel
 from deep_translator import GoogleTranslator
 import torch
+import datetime
+
+def update_korean_script_html(translated_text):
+    now = datetime.datetime.now().strftime("[%H:%M:%S]")
+    line = f"{now} {translated_text}"
+
+    # 로그 누적
+    with open("korean_only_log.txt", "a", encoding="utf-8") as f:
+        f.write(line + "\n")
+
+    # 전체 HTML 재생성
+    with open("korean_only_log.txt", "r", encoding="utf-8") as f:
+        lines = f.readlines()
+
+    html = "<html><head><meta charset='utf-8'><meta http-equiv='refresh' content='2'>"
+    html += """<style>
+        body { font-family: 'Pretendard','Noto Sans KR',sans-serif; padding: 40px; background: #fff; color: #111; }
+        .line { font-size: 18px; margin-bottom: 12px; }
+    </style></head><body><h2>🗣 실시간 번역 스크립트</h2>
+    """
+    for l in lines:
+        html += f"<div class='line'>{l.strip()}</div>\n"
+    html += "</body></html>"
+
+    with open("translated_output.html", "w", encoding="utf-8") as f:
+        f.write(html)
 
 class RealTimeTranslator:
     def __init__(self):
@@ -35,14 +61,15 @@ class RealTimeTranslator:
                 if len(buffer_audio) >= 24000:
                     segment = buffer_audio[:24000]
                     buffer_audio = buffer_audio[8000:]
-                    # STT 실행
+
                     segments, _ = self.model.transcribe(segment, language="en")
                     text = " ".join([s.text for s in segments]).strip()
-                    print(f"[DEBUG] Whisper recognized: '{text}'")  # 음성 인식 결과 출력
+                    print(f"[DEBUG] Whisper recognized: '{text}'")
                     if text:
                         try:
                             translated = self.translator.translate(text)
-                            print(f"[DEBUG] Translated: '{translated}'")  # 번역 결과 출력
+                            print(f"[DEBUG] Translated: '{translated}'")
+                            update_korean_script_html(translated)  # 자막 업데이트
                             return translated
                         except Exception as e:
                             print(f"[DEBUG] Translation error: {e}")
@@ -51,3 +78,6 @@ class RealTimeTranslator:
             except Exception as e:
                 print(f"[DEBUG] Audio processing error: {e}")
         return None
+
+
+
